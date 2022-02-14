@@ -18,15 +18,12 @@ def request(url):
     READONLY = "r"
 
     assert url.startswith(HTTP_PREFIX)  # confirm HTTP protocol
-    assert url.endswith(PATH_SEPARATOR)  # confirm  properly formatted URL
     url = url[len(HTTP_PREFIX) :]  # discard the prefix
 
     host, path = url.split(PATH_SEPARATOR, 1)
-    path = (
-        f"/{path}" if path != EMPTY_STRING else DEFAULT_PATH
-    )  # replace the stripped path separator, otherwise use the default path
+    path = f"/{path}"  # replace the stripped path separator
 
-    request_action = f"{METHOD_GET} {path} {HTTP_PROTOCOL_1_0}{NEWLINE}"
+    request_action = f"{METHOD_GET} /index.html {HTTP_PROTOCOL_1_0}{NEWLINE}"
     request_header = f"Host: {host}{NEWLINE * 2}"
     request = request_action.encode(ENCODING) + request_header.encode(ENCODING)
 
@@ -39,7 +36,7 @@ def request(url):
     response = tcp_socket.makefile(READONLY, encoding=ENCODING, newline=NEWLINE)
 
     statusline = response.readline()
-    _, status, explanation = statusline.split(HEADER_SEPARATOR, 2)
+    version, status, explanation = statusline.split(HEADER_SEPARATOR, 2)
     assert status == STATUS_OK, f"{status}: {explanation}"
 
     headers = {}
