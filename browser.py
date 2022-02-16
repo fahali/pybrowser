@@ -1,14 +1,20 @@
+NEWLINE = "\r\n"
+
+
+def append_header(key, value, headers=""):
+    return f"{headers}{key}: {value}{NEWLINE}"
+
+
 def request(url):
     import socket
     import ssl
 
     HTTP_SCHEME = "http"
     HTTPS_SCHEME = "https"
-    HTTP_PROTOCOL_1_0 = "HTTP/1.0"
+    HTTP_PROTOCOL_1_1 = "HTTP/1.1"
     METHOD_GET = "GET"
     STATUS_OK = "200"
 
-    NEWLINE = "\r\n"
     PATH_SEPARATOR = "/"
     SCHEME_SEPARATOR = "://"
     PORT_SEPARATOR = ":"
@@ -34,9 +40,13 @@ def request(url):
         host, port = host.split(PORT_SEPARATOR, 1)
         port = int(port)
 
-    request_action = f"{METHOD_GET} /index.html {HTTP_PROTOCOL_1_0}{NEWLINE}"
-    request_header = f"Host: {host}{NEWLINE * 2}"
-    request = request_action.encode(ENCODING) + request_header.encode(ENCODING)
+    request_action = f"{METHOD_GET} /index.html {HTTP_PROTOCOL_1_1}{NEWLINE}"
+
+    request_headers = append_header("Host", host)
+    request_headers = append_header("Connection", "close", request_headers)
+    request_headers = append_header("User-Agent", "pybrowser", request_headers)
+
+    request = f"{request_action}{request_headers}{NEWLINE}".encode(ENCODING)
 
     tcp_socket = socket.socket(
         family=socket.AF_INET, type=socket.SOCK_STREAM, proto=socket.IPPROTO_TCP
