@@ -1,4 +1,19 @@
+HTTP_SCHEME = "http"
+HTTPS_SCHEME = "https"
+FILE_SCHEME = "file"
+SUPPORTED_SCHEMES = [HTTP_SCHEME, HTTPS_SCHEME, FILE_SCHEME]
+
 NEWLINE = "\r\n"
+READONLY = "r"
+
+
+def parse_scheme(url):
+    SCHEME_SEPARATOR = "://"
+
+    scheme, url = url.split(SCHEME_SEPARATOR, 1)
+    assert scheme in SUPPORTED_SCHEMES, f"Unknown scheme {scheme}"
+
+    return scheme, url
 
 
 def append_header(key, value, headers=""):
@@ -9,14 +24,11 @@ def request(url):
     import socket
     import ssl
 
-    HTTP_SCHEME = "http"
-    HTTPS_SCHEME = "https"
     HTTP_PROTOCOL_1_1 = "HTTP/1.1"
     METHOD_GET = "GET"
     STATUS_OK = "200"
 
     PATH_SEPARATOR = "/"
-    SCHEME_SEPARATOR = "://"
     PORT_SEPARATOR = ":"
     HEADER_SEPARATOR = " "
     HEADER_KEY_VALUE_SEPARATOR = ":"
@@ -24,10 +36,8 @@ def request(url):
     HTTP_PORT = 80
     HTTPS_PORT = 443
     ENCODING = "utf8"
-    READONLY = "r"
 
-    scheme, url = url.split(SCHEME_SEPARATOR, 1)
-    assert scheme in [HTTP_SCHEME, HTTPS_SCHEME], f"Unknown scheme {scheme}"
+    scheme, url = parse_scheme(url)
 
     # set a default port to start
     port = HTTP_PORT if scheme == HTTP_SCHEME else HTTPS_PORT
@@ -92,12 +102,29 @@ def show(body):
             print(char, end="")
 
 
+def print_file_contents(path):
+    file = open(path, READONLY)
+    contents = file.read()
+    print(contents)
+
+
 def load(url):
-    headers, body = request(url)
-    show(body)
+    scheme, path = parse_scheme(url)
+
+    match scheme:
+        case "http" | "https":
+            headers, body = request(url)
+            show(body)
+        case "file":
+            print_file_contents(path)
 
 
 if __name__ == "__main__":
     import sys
 
-    load(sys.argv[1])
+    DEFAULT_FILE_PATH = "file://default.txt"
+
+    if len(sys.argv) > 1:
+        load(sys.argv[1])
+    else:
+        load(DEFAULT_FILE_PATH)
