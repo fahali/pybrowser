@@ -1,19 +1,30 @@
 HTTP_SCHEME = "http"
 HTTPS_SCHEME = "https"
 FILE_SCHEME = "file"
+DATA_SCHEME = "data"
 SUPPORTED_SCHEMES = [HTTP_SCHEME, HTTPS_SCHEME, FILE_SCHEME]
 
 NEWLINE = "\r\n"
 READONLY = "r"
 
 
-def parse_scheme(url):
+def parse_supported_scheme(url):
     SCHEME_SEPARATOR = "://"
 
     scheme, url = url.split(SCHEME_SEPARATOR, 1)
     assert scheme in SUPPORTED_SCHEMES, f"Unknown scheme {scheme}"
 
     return scheme, url
+
+
+def parse_data_scheme(url):
+    DATA_SCHEME_SEPARATOR = ":"
+    MIME_TYPE_SEPARATOR = ","
+
+    _, rest = url.split(DATA_SCHEME_SEPARATOR, 1)
+    mime_type, content = rest.split(MIME_TYPE_SEPARATOR, 1)
+
+    return mime_type, content
 
 
 def append_header(key, value, headers=""):
@@ -37,7 +48,7 @@ def request(url):
     HTTPS_PORT = 443
     ENCODING = "utf8"
 
-    scheme, url = parse_scheme(url)
+    scheme, url = parse_supported_scheme(url)
 
     # set a default port to start
     port = HTTP_PORT if scheme == HTTP_SCHEME else HTTPS_PORT
@@ -109,14 +120,18 @@ def print_file_contents(path):
 
 
 def load(url):
-    scheme, path = parse_scheme(url)
+    if url.startswith(DATA_SCHEME):
+        mime_type, content = parse_data_scheme(url)
+        print(content)
+    else:
+        scheme, path = parse_supported_scheme(url)
 
-    match scheme:
-        case "http" | "https":
-            headers, body = request(url)
-            show(body)
-        case "file":
-            print_file_contents(path)
+        match scheme:
+            case "http" | "https":
+                headers, body = request(url)
+                show(body)
+            case "file":
+                print_file_contents(path)
 
 
 if __name__ == "__main__":
