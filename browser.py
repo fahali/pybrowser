@@ -88,8 +88,10 @@ def request(url):
     headers = {}
     while True:
         line = response.readline()
+
         if line == NEWLINE:
             break
+
         header, value = line.split(HEADER_KEY_VALUE_SEPARATOR, 1)
         headers[header.lower()] = value.strip()  # normalize headers
 
@@ -103,13 +105,34 @@ def show(body):
     OPEN_TAG_CHARACTER = "<"
     CLOSE_TAG_CHARACTER = ">"
 
+    OPEN_BODY_TAG = "<body>"
+    CLOSE_BODY_TAG = "</body>"
+
     in_html_tag = False
+    in_body_tag = False
+    current_tag = ""
+
     for char in body:
         if char == OPEN_TAG_CHARACTER:
             in_html_tag = True
+            current_tag += char
+
         elif char == CLOSE_TAG_CHARACTER:
             in_html_tag = False
-        elif not in_html_tag:
+            current_tag += char
+
+            if current_tag == OPEN_BODY_TAG:
+                in_body_tag = True
+
+            elif current_tag == CLOSE_BODY_TAG:
+                in_body_tag = False
+
+            current_tag = ""
+
+        elif in_html_tag:
+            current_tag += char
+
+        elif in_body_tag:
             print(char, end="")
 
 
@@ -123,6 +146,7 @@ def load(url):
     if url.startswith(DATA_SCHEME):
         mime_type, content = parse_data_scheme(url)
         print(content)
+
     else:
         scheme, path = parse_supported_scheme(url)
 
@@ -130,6 +154,7 @@ def load(url):
             case "http" | "https":
                 headers, body = request(url)
                 show(body)
+
             case "file":
                 print_file_contents(path)
 
@@ -141,5 +166,6 @@ if __name__ == "__main__":
 
     if len(sys.argv) > 1:
         load(sys.argv[1])
+
     else:
         load(DEFAULT_FILE_PATH)
