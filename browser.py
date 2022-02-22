@@ -6,6 +6,7 @@ SUPPORTED_SCHEMES = [HTTP_SCHEME, HTTPS_SCHEME, FILE_SCHEME]
 
 NEWLINE = "\r\n"
 READONLY = "r"
+EMPTY_STRING = ""
 
 
 def parse_supported_scheme(url):
@@ -27,7 +28,7 @@ def parse_data_scheme(url):
     return mime_type, content
 
 
-def append_header(key, value, headers=""):
+def append_header(key, value, headers=EMPTY_STRING):
     return f"{headers}{key}: {value}{NEWLINE}"
 
 
@@ -108,9 +109,18 @@ def show(body):
     OPEN_BODY_TAG = "<body>"
     CLOSE_BODY_TAG = "</body>"
 
+    OPEN_ENTITY = "&"
+    CLOSE_ENTITY = ";"
+
+    OPEN_TAG_ENTITY = "&lt;"
+    CLOSE_TAG_ENTITY = "&gt;"
+
     in_html_tag = False
     in_body_tag = False
-    current_tag = ""
+    in_html_entity = False
+
+    current_tag = EMPTY_STRING
+    current_entity = EMPTY_STRING
 
     for char in body:
         if char == OPEN_TAG_CHARACTER:
@@ -127,13 +137,32 @@ def show(body):
             elif current_tag == CLOSE_BODY_TAG:
                 in_body_tag = False
 
-            current_tag = ""
+            current_tag = EMPTY_STRING
+
+        elif char == OPEN_ENTITY:
+            in_html_entity = True
+            current_entity = char
+
+        elif char == CLOSE_ENTITY:
+            in_html_entity = False
+            current_entity += char
+
+            if current_entity == OPEN_TAG_ENTITY:
+                print(OPEN_TAG_CHARACTER, end=EMPTY_STRING)
+
+            elif current_entity == CLOSE_TAG_ENTITY:
+                print(CLOSE_TAG_CHARACTER, end=EMPTY_STRING)
+
+            current_entity = EMPTY_STRING
 
         elif in_html_tag:
             current_tag += char
 
+        elif in_html_entity:
+            current_entity += char
+
         elif in_body_tag:
-            print(char, end="")
+            print(char, end=EMPTY_STRING)
 
 
 def print_file_contents(path):
@@ -145,7 +174,7 @@ def print_file_contents(path):
 def load(url):
     if url.startswith(DATA_SCHEME):
         mime_type, content = parse_data_scheme(url)
-        print(content)
+        show(content)
 
     else:
         scheme, path = parse_supported_scheme(url)
