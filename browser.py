@@ -165,10 +165,11 @@ def show(body):
             print(char, end=EMPTY_STRING)
 
 
-def print_file_contents(path):
+def get_file_contents(path):
     file = open(path, READONLY)
     contents = file.read()
-    print(contents)
+
+    return contents
 
 
 def load(url):
@@ -185,13 +186,14 @@ def load(url):
                 show(body)
 
             case "file":
-                print_file_contents(path)
+                content = get_file_contents(path)
+                show(content)
 
 
 if __name__ == "__main__":
     import sys
 
-    DEFAULT_FILE_PATH = "file://default.txt"
+    DEFAULT_FILE_PATH = "file://index.html"
 
     if len(sys.argv) > 1:
         load(sys.argv[1])
