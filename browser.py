@@ -1,31 +1,47 @@
 HTTP_SCHEME = "http"
 HTTPS_SCHEME = "https"
 FILE_SCHEME = "file"
-DATA_SCHEME = "data"
-SUPPORTED_SCHEMES = [HTTP_SCHEME, HTTPS_SCHEME, FILE_SCHEME]
+STANDARD_SCHEMES = [HTTP_SCHEME, HTTPS_SCHEME, FILE_SCHEME]
 
+# the following are *special* schemes that need specific handling
+DATA_SCHEME = "data"
+VIEW_SOURCE_SCHEME = "view-source"
+
+# common flags to multiple functions
 NEWLINE = "\r\n"
 READONLY = "r"
 EMPTY_STRING = ""
 
+OPEN_TAG_CHARACTER = "<"
+CLOSE_TAG_CHARACTER = ">"
+OPEN_TAG_ENTITY = "&lt;"
+CLOSE_TAG_ENTITY = "&gt;"
 
-def parse_supported_scheme(url):
+
+def parse_standard_scheme(url):
     SCHEME_SEPARATOR = "://"
 
     scheme, url = url.split(SCHEME_SEPARATOR, 1)
-    assert scheme in SUPPORTED_SCHEMES, f"Unknown scheme {scheme}"
+    assert scheme in STANDARD_SCHEMES, f"Unknown scheme {scheme}"
 
     return scheme, url
 
 
 def parse_data_scheme(url):
-    DATA_SCHEME_SEPARATOR = ":"
+    SCHEME_SEPARATOR = ":"
     MIME_TYPE_SEPARATOR = ","
 
-    _, rest = url.split(DATA_SCHEME_SEPARATOR, 1)
+    _, rest = url.split(SCHEME_SEPARATOR, 1)
     mime_type, content = rest.split(MIME_TYPE_SEPARATOR, 1)
 
     return mime_type, content
+
+
+def parse_view_source_scheme(url):
+    SCHEME_SEPARATOR = ":"
+    _, url = url.split(SCHEME_SEPARATOR, 1)
+
+    return url
 
 
 def append_header(key, value, headers=EMPTY_STRING):
@@ -40,6 +56,8 @@ def request(url):
     METHOD_GET = "GET"
     STATUS_OK = "200"
 
+    DEFAULT_PATH = "/index.html"
+
     PATH_SEPARATOR = "/"
     PORT_SEPARATOR = ":"
     HEADER_SEPARATOR = " "
@@ -49,7 +67,7 @@ def request(url):
     HTTPS_PORT = 443
     ENCODING = "utf8"
 
-    scheme, url = parse_supported_scheme(url)
+    scheme, url = parse_standard_scheme(url)
 
     # set a default port to start
     port = HTTP_PORT if scheme == HTTP_SCHEME else HTTPS_PORT
@@ -57,12 +75,15 @@ def request(url):
     host, path = url.split(PATH_SEPARATOR, 1)
     path = f"/{path}"  # replace the stripped path separator
 
+    if path == PATH_SEPARATOR:
+        path = DEFAULT_PATH
+
     # get the correct port if it's available
     if PORT_SEPARATOR in host:
         host, port = host.split(PORT_SEPARATOR, 1)
         port = int(port)
 
-    request_action = f"{METHOD_GET} /index.html {HTTP_PROTOCOL_1_1}{NEWLINE}"
+    request_action = f"{METHOD_GET} {path} {HTTP_PROTOCOL_1_1}{NEWLINE}"
 
     request_headers = append_header("Host", host)
     request_headers = append_header("Connection", "close", request_headers)
@@ -102,18 +123,13 @@ def request(url):
     return headers, body
 
 
+# TODO F# 2022.02.21 - make view source GLOBAL flag
 def show(body):
-    OPEN_TAG_CHARACTER = "<"
-    CLOSE_TAG_CHARACTER = ">"
-
     OPEN_BODY_TAG = "<body>"
     CLOSE_BODY_TAG = "</body>"
 
     OPEN_ENTITY = "&"
     CLOSE_ENTITY = ";"
-
-    OPEN_TAG_ENTITY = "&lt;"
-    CLOSE_TAG_ENTITY = "&gt;"
 
     in_html_tag = False
     in_body_tag = False
@@ -153,6 +169,7 @@ def show(body):
             elif current_entity == CLOSE_TAG_ENTITY:
                 print(CLOSE_TAG_CHARACTER, end=EMPTY_STRING)
 
+            in_body_tag = True
             current_entity = EMPTY_STRING
 
         elif in_html_tag:
@@ -172,22 +189,45 @@ def get_file_contents(path):
     return contents
 
 
+def entity_replace(char):
+    if char == OPEN_TAG_CHARACTER:
+        return OPEN_TAG_ENTITY
+    elif char == CLOSE_TAG_CHARACTER:
+        return CLOSE_TAG_ENTITY
+    else:
+        return char
+
+
+def transform(body):
+    return "".join(entity_replace(char) for char in body)
+
+
 def load(url):
     if url.startswith(DATA_SCHEME):
         mime_type, content = parse_data_scheme(url)
         show(content)
 
     else:
-        scheme, path = parse_supported_scheme(url)
+        view_source_mode = False
 
-        match scheme:
-            case "http" | "https":
-                headers, body = request(url)
-                show(body)
+        if url.startswith(VIEW_SOURCE_SCHEME):
+            view_source_mode = True
+            url = parse_view_source_scheme(url)
 
-            case "file":
-                content = get_file_contents(path)
-                show(content)
+        scheme, path = parse_standard_scheme(url)
+
+        headers = ""
+        body = ""
+
+        if scheme in [HTTP_SCHEME, HTTPS_SCHEME]:
+            headers, body = request(url)
+        else:
+            body = get_file_contents(path)
+
+        if view_source_mode:
+            show(transform(body))
+        else:
+            show(body)
 
 
 if __name__ == "__main__":
